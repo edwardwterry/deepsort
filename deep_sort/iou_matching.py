@@ -64,6 +64,7 @@ def iou_cost(tracks, detections, track_indices=None,
         `1 - iou(tracks[track_indices[i]], detections[detection_indices[j]])`.
 
     """
+    print('Calculating IOU cost')
     if track_indices is None:
         track_indices = np.arange(len(tracks))
     if detection_indices is None:

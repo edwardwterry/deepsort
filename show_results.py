@@ -9,7 +9,7 @@ from deep_sort.iou_matching import iou
 from application_util import visualization
 
 
-DEFAULT_UPDATE_MS = 20
+DEFAULT_UPDATE_MS = 200
 
 
 def run(sequence_dir, result_file, show_false_alarms=False, detection_file=None,

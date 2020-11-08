@@ -13,7 +13,7 @@ def parse_args():
         required=True)
     parser.add_argument(
         "--detection_dir", help="Path to detections.", default="detections",
-        required=True)
+        required=False)
     parser.add_argument(
         "--output_dir", help="Folder in which the results will be stored. Will "
         "be created if it does not exist.", default="results")
@@ -21,6 +21,8 @@ def parse_args():
         "--min_confidence", help="Detection confidence threshold. Disregard "
         "all detections that have a confidence lower than this value.",
         default=0.0, type=float)
+    parser.add_argument("--vis_dir")        
+    parser.add_argument("--display", default=False)        
     parser.add_argument(
         "--min_detection_height", help="Threshold on the detection bounding "
         "box height. Detections with height smaller than this value are "
@@ -45,9 +47,10 @@ if __name__ == "__main__":
     for sequence in sequences:
         print("Running sequence %s" % sequence)
         sequence_dir = os.path.join(args.mot_dir, sequence)
-        detection_file = os.path.join(args.detection_dir, "%s.npy" % sequence)
+        detection_dir = os.path.join(sequence_dir, 'det')
+        detection_file = os.path.join(detection_dir, "%s.npy" % sequence)
         output_file = os.path.join(args.output_dir, "%s.txt" % sequence)
         deep_sort_app.run(
             sequence_dir, detection_file, output_file, args.min_confidence,
             args.nms_max_overlap, args.min_detection_height,
-            args.max_cosine_distance, args.nn_budget, display=False)
+            args.max_cosine_distance, args.nn_budget, args.vis_dir, display=args.display)

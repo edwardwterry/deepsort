@@ -3,10 +3,10 @@ from __future__ import absolute_import
 import numpy as np
 from sklearn.utils.linear_assignment_ import linear_assignment
 from . import kalman_filter
+from matplotlib import pyplot as plt
 
-
-INFTY_COST = 1e+5
-
+INFTY_COST = 1e+3 # was 1e+5
+np.set_printoptions(precision=3)
 
 def min_cost_matching(
         distance_metric, max_distance, tracks, detections, track_indices=None,
@@ -50,12 +50,39 @@ def min_cost_matching(
         detection_indices = np.arange(len(detections))
 
     if len(detection_indices) == 0 or len(track_indices) == 0:
-        return [], track_indices, detection_indices  # Nothing to match.
+        return [], track_indices, detection_indices, []  # Nothing to match.
 
     cost_matrix = distance_metric(
         tracks, detections, track_indices, detection_indices)
-    cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
+    # cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
     indices = linear_assignment(cost_matrix)
+    # fig, ax = plt.subplots()
+    print('cm\n', np.asarray(cost_matrix))
+    print('trk indices\n', indices[:,0])
+    print('det indices\n', indices[:,1])
+    print('trk/det indices input\n', track_indices, detection_indices)
+
+    # ax.matshow(cost_matrix, cmap='inferno_r')
+    # ax.set_title('Feature vector cosine distance \nconfusion matrix')
+    # ax.set_xlabel('Existing tracks')
+    # ax.set_xticks(range(len(indices[:,0]))) # Fix up this indexing too
+    # ax.set_xticklabels([k for k in indices[:,0]]) # Fix up this indexing too
+    # ax.set_ylabel('Incoming detections')
+    # # ax.set_yticks(range(len(indices[:,1]))) # Fix up this indexing too
+    # # ax.set_yticklabels([k for k in indices[:,1]]) # Fix up this indexing too    
+    # plt.show()
+
+    # fig.suptitle(seq)
+    # if nominal:
+    #     fn = filenames[i]
+    # else:
+    #     fn = filenames[i] + '_d' + f'{dropout_rate:.03}' + '_jxy' + f'{jitter_xy:.03}' + '_jwh' + f'{jitter_wh:.03}' 
+    # print('Writing to', os.path.join(os.path.join(out_path, seq), fn + '.png'))
+
+    # # plt.savefig(os.path.join(os.path.join(out_path, seq), fn + '.png'))
+    # plt.show()
+    # plt.close()
+
 
     matches, unmatched_tracks, unmatched_detections = [], [], []
     for col, detection_idx in enumerate(detection_indices):
@@ -72,7 +99,7 @@ def min_cost_matching(
             unmatched_detections.append(detection_idx)
         else:
             matches.append((track_idx, detection_idx))
-    return matches, unmatched_tracks, unmatched_detections
+    return matches, unmatched_tracks, unmatched_detections, cost_matrix
 
 
 def matching_cascade(
@@ -121,7 +148,9 @@ def matching_cascade(
 
     unmatched_detections = detection_indices
     matches = []
+    cm = []
     for level in range(cascade_depth):
+        print('Cascade level:', level)
         if len(unmatched_detections) == 0:  # No detections left
             break
 
@@ -132,18 +161,18 @@ def matching_cascade(
         if len(track_indices_l) == 0:  # Nothing to match at this level
             continue
 
-        matches_l, _, unmatched_detections = \
+        matches_l, _, unmatched_detections, cm = \
             min_cost_matching(
                 distance_metric, max_distance, tracks, detections,
                 track_indices_l, unmatched_detections)
         matches += matches_l
     unmatched_tracks = list(set(track_indices) - set(k for k, _ in matches))
-    return matches, unmatched_tracks, unmatched_detections
+    return matches, unmatched_tracks, unmatched_detections, cm
 
 
 def gate_cost_matrix(
         kf, cost_matrix, tracks, detections, track_indices, detection_indices,
-        gated_cost=INFTY_COST, only_position=False):
+        gated_cost=INFTY_COST, only_position=True):
     """Invalidate infeasible entries in cost matrix based on the state
     distributions obtained by Kalman filtering.
 
@@ -179,12 +208,16 @@ def gate_cost_matrix(
 
     """
     gating_dim = 2 if only_position else 4
-    gating_threshold = kalman_filter.chi2inv95[gating_dim]
+    gating_threshold = kalman_filter.chi2inv95[gating_dim]# * 5.0
+    print('gating thresh\n', gating_threshold)
     measurements = np.asarray(
         [detections[i].to_xyah() for i in detection_indices])
+    print('gcm measurements:\n', measurements)
     for row, track_idx in enumerate(track_indices):
         track = tracks[track_idx]
+        print('in gcm, tid', track_idx)
         gating_distance = kf.gating_distance(
             track.mean, track.covariance, measurements, only_position)
+        print('gating dist\n', gating_distance)
         cost_matrix[row, gating_distance > gating_threshold] = gated_cost
     return cost_matrix

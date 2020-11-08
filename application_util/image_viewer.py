@@ -121,7 +121,7 @@ class ImageViewer(object):
             raise ValueError("color must be tuple of 3")
         self._color = tuple(int(c) for c in value)
 
-    def rectangle(self, x, y, w, h, label=None):
+    def rectangle(self, x, y, w, h, label=None, br=False):
         """Draw a rectangle.
 
         Parameters
@@ -146,9 +146,17 @@ class ImageViewer(object):
             text_size = cv2.getTextSize(
                 label, cv2.FONT_HERSHEY_PLAIN, 1, self.thickness)
 
-            center = pt1[0] + 5, pt1[1] + 5 + text_size[0][1]
-            pt2 = pt1[0] + 10 + text_size[0][0], pt1[1] + 10 + \
-                text_size[0][1]
+            if br:
+                center = pt2[0] - 10, pt2[1] - 10 + text_size[0][1]
+            else:
+                center = pt1[0] + 5, pt1[1] + 5 + text_size[0][1]
+
+            if br:
+                pt1 = pt2[0] - 10, pt2[1] - 10
+                pt2 = pt2[0], pt2[1]
+            else:
+                pt2 = pt1[0] + 10 + text_size[0][0], pt1[1] + 10 + \
+                    text_size[0][1]
             cv2.rectangle(self.image, pt1, pt2, self._color, -1)
             cv2.putText(self.image, label, center, cv2.FONT_HERSHEY_PLAIN,
                         1, (255, 255, 255), self.thickness)

@@ -1,5 +1,5 @@
 # vim: expandtab:ts=4:sw=4
-
+import pdb
 
 class TrackState:
     """
@@ -135,6 +135,7 @@ class Track:
             The associated detection.
 
         """
+        # pdb.set_trace()
         self.mean, self.covariance = kf.update(
             self.mean, self.covariance, detection.to_xyah())
         self.features.append(detection.feature)

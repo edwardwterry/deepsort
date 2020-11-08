@@ -128,7 +128,7 @@ def create_detections(detection_mat, frame_idx, min_height=0):
 
 def run(sequence_dir, detection_file, output_file, min_confidence,
         nms_max_overlap, min_detection_height, max_cosine_distance,
-        nn_budget, display):
+        nn_budget, vis_dir, display):
     """Run multi-target tracker on a particular sequence.
 
     Parameters
@@ -164,7 +164,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     results = []
 
     def frame_callback(vis, frame_idx):
-        print("Processing frame %05d" % frame_idx)
+        print("==============\n\nProcessing frame %05d" % frame_idx)
 
         # Load image and generate detections.
         detections = create_detections(
@@ -181,14 +181,18 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         # Update tracker.
         tracker.predict()
         tracker.update(detections)
-
+        # print(tracker.cm_app)
+        # print(tracker.cm_iou)
         # Update visualization.
         if display:
             image = cv2.imread(
                 seq_info["image_filenames"][frame_idx], cv2.IMREAD_COLOR)
             vis.set_image(image.copy())
-            vis.draw_detections(detections)
             vis.draw_trackers(tracker.tracks)
+            vis.draw_detections(detections)
+
+        # Save image to file
+            cv2.imwrite(os.path.join(vis_dir, f'{frame_idx:05d}'+'.jpg'), vis.viewer.image)
 
         # Store results.
         for track in tracker.tracks:
@@ -200,13 +204,14 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
 
     # Run tracker.
     if display:
-        visualizer = visualization.Visualization(seq_info, update_ms=5)
+        visualizer = visualization.Visualization(seq_info, update_ms=4000)
     else:
         visualizer = visualization.NoVisualization(seq_info)
     visualizer.run(frame_callback)
 
     # Store results.
     f = open(output_file, 'w')
+    print('opening', output_file)
     for row in results:
         print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
             row[0], row[1], row[2], row[3], row[4], row[5]),file=f)
@@ -245,7 +250,7 @@ def parse_args():
         "detection overlap.", default=1.0, type=float)
     parser.add_argument(
         "--max_cosine_distance", help="Gating threshold for cosine distance "
-        "metric (object appearance).", type=float, default=0.2)
+        "metric (object appearance).", type=float, default=0.4) # was 0.2
     parser.add_argument(
         "--nn_budget", help="Maximum size of the appearance descriptors "
         "gallery. If None, no budget is enforced.", type=int, default=None)
@@ -260,4 +265,4 @@ if __name__ == "__main__":
     run(
         args.sequence_dir, args.detection_file, args.output_file,
         args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display)
+        args.max_cosine_distance, args.nn_budget, args.display, args.vis_dir)

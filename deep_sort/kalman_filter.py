@@ -49,8 +49,8 @@ class KalmanFilter(object):
         # Motion and observation uncertainty are chosen relative to the current
         # state estimate. These weights control the amount of uncertainty in
         # the model. This is a bit hacky.
-        self._std_weight_position = 1. / 20
-        self._std_weight_velocity = 1. / 160
+        self._std_weight_position = 1. / 20 * 1000
+        self._std_weight_velocity = 1. / 160 * 1000
 
     def initiate(self, measurement):
         """Create track from unassociated measurement.
@@ -74,14 +74,15 @@ class KalmanFilter(object):
         mean = np.r_[mean_pos, mean_vel]
 
         std = [
-            2 * self._std_weight_position * measurement[3],
-            2 * self._std_weight_position * measurement[3],
-            1e-2,
-            2 * self._std_weight_position * measurement[3],
-            10 * self._std_weight_velocity * measurement[3],
-            10 * self._std_weight_velocity * measurement[3],
-            1e-5,
-            10 * self._std_weight_velocity * measurement[3]]
+            2 * self._std_weight_position,# * measurement[3],
+            2 * self._std_weight_position,# * measurement[3],
+            2 * self._std_weight_position, # * measurement[3], #1e-2,
+            2 * self._std_weight_position, # * measurement[3],
+            10 * self._std_weight_velocity, # * measurement[3],
+            10 * self._std_weight_velocity, # * measurement[3],
+            10 * self._std_weight_velocity, # * measurement[3], #1e-5,
+            10 * self._std_weight_velocity # * measurement[3]]
+        ]
         covariance = np.diag(np.square(std))
         return mean, covariance
 
@@ -104,21 +105,26 @@ class KalmanFilter(object):
             state. Unobserved velocities are initialized to 0 mean.
 
         """
+        print('@@@ in predict...')
         std_pos = [
-            self._std_weight_position * mean[3],
-            self._std_weight_position * mean[3],
-            1e-2,
-            self._std_weight_position * mean[3]]
+            self._std_weight_position,#,  * mean[3],
+            self._std_weight_position,#,  * mean[3],
+            self._std_weight_position,# * mean[3],#,
+            self._std_weight_position#,  * mean[3]]
+        ]
         std_vel = [
-            self._std_weight_velocity * mean[3],
-            self._std_weight_velocity * mean[3],
-            1e-5,
-            self._std_weight_velocity * mean[3]]
+            self._std_weight_velocity,#, * mean[3],
+            self._std_weight_velocity,#, * mean[3],
+            self._std_weight_velocity,# * mean[3],#,
+            self._std_weight_velocity#, * mean[3]]
+        ]
         motion_cov = np.diag(np.square(np.r_[std_pos, std_vel]))
 
         mean = np.dot(self._motion_mat, mean)
+        print ('mean\n', mean)
         covariance = np.linalg.multi_dot((
             self._motion_mat, covariance, self._motion_mat.T)) + motion_cov
+        print ('cov\n', covariance)
 
         return mean, covariance
 
@@ -139,16 +145,21 @@ class KalmanFilter(object):
             estimate.
 
         """
+        print('\n ^^^ in project')
         std = [
-            self._std_weight_position * mean[3],
-            self._std_weight_position * mean[3],
-            1e-1,
-            self._std_weight_position * mean[3]]
+            0.1*self._std_weight_position,#, * mean[3], #0.0001 * 
+            0.1*self._std_weight_position,#, * mean[3],
+            0.1*self._std_weight_position,# * mean[3], #
+            0.1*self._std_weight_position#, * mean[3]]
+        ]
         innovation_cov = np.diag(np.square(std))
+        print('innovation_cov\n', innovation_cov)
 
         mean = np.dot(self._update_mat, mean)
+        print('mean\n', mean)
         covariance = np.linalg.multi_dot((
             self._update_mat, covariance, self._update_mat.T))
+        print('covariance\n', covariance)
         return mean, covariance + innovation_cov
 
     def update(self, mean, covariance, measurement):
@@ -171,18 +182,25 @@ class KalmanFilter(object):
             Returns the measurement-corrected state distribution.
 
         """
+        print('om\n', mean)
+        print('oc\n', covariance)
         projected_mean, projected_cov = self.project(mean, covariance)
-
+        print('pm\n', projected_mean)
+        print('pc\n', projected_cov)
         chol_factor, lower = scipy.linalg.cho_factor(
             projected_cov, lower=True, check_finite=False)
         kalman_gain = scipy.linalg.cho_solve(
             (chol_factor, lower), np.dot(covariance, self._update_mat.T).T,
             check_finite=False).T
+        print('kg\n', kalman_gain)
         innovation = measurement - projected_mean
+        print('innov\n', innovation)
 
         new_mean = mean + np.dot(innovation, kalman_gain.T)
         new_covariance = covariance - np.linalg.multi_dot((
             kalman_gain, projected_cov, kalman_gain.T))
+        print ('nm\n', new_mean)
+        print ('nc\n', new_covariance)
         return new_mean, new_covariance
 
     def gating_distance(self, mean, covariance, measurements,
@@ -221,7 +239,9 @@ class KalmanFilter(object):
             measurements = measurements[:, :2]
 
         cholesky_factor = np.linalg.cholesky(covariance)
+        # print('chol\n', cholesky_factor)
         d = measurements - mean
+        print('d\n', d)
         z = scipy.linalg.solve_triangular(
             cholesky_factor, d.T, lower=True, check_finite=False,
             overwrite_b=True)
