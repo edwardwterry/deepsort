@@ -27,7 +27,7 @@ def parse_args():
         required=True)
     parser.add_argument(
         "--convert_h264", help="If true, convert videos to libx264 (requires "
-        "FFMPEG", default=False)
+        "FFMPEG", default=True)
     parser.add_argument(
         "--update_ms", help="Time between consecutive frames in milliseconds. "
         "Defaults to the frame_rate specified in seqinfo.ini, if available.",

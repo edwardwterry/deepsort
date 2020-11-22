@@ -22,7 +22,9 @@ def parse_args():
         "all detections that have a confidence lower than this value.",
         default=0.0, type=float)
     parser.add_argument("--vis_dir")        
-    parser.add_argument("--display", default=False)        
+    parser.add_argument("--vis", dest='display', action='store_true')
+    parser.add_argument("--novis", dest='display', action='store_false')
+    parser.set_defaults(display=False)
     parser.add_argument(
         "--min_detection_height", help="Threshold on the detection bounding "
         "box height. Detections with height smaller than this value are "
