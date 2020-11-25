@@ -54,7 +54,7 @@ class Tracker:
 
         This function should be called once every time step, before `update`.
         """
-        print('Number of active tracks:', len(self.tracks))
+        # print('Number of active tracks:', len(self.tracks))
         for track in self.tracks:
             track.predict(self.kf)
 
@@ -73,7 +73,7 @@ class Tracker:
 
         # Update track set.
         for track_idx, detection_idx in matches:
-            print('updating KF for tid did', track_idx, detection_idx)
+            # print('updating KF for tid did', track_idx, detection_idx)
             self.tracks[track_idx].update(self.kf, detections[detection_idx])
         for track_idx in unmatched_tracks:
             self.tracks[track_idx].mark_missed()
@@ -90,6 +90,7 @@ class Tracker:
             features += track.features
             targets += [track.track_id for _ in track.features]
             track.features = []
+            print('tid, mean\n', track.track_id, track.mean)
         self.metric.partial_fit(np.asarray(features), np.asarray(targets), active_targets)
 
     def _match(self, detections):
@@ -105,6 +106,8 @@ class Tracker:
                 self.kf, cost_matrix, tracks, dets, track_indices,
                 detection_indices) # taking away gating for time being HACK
             print('cm#2\n', cost_matrix)
+            print('ti\n', track_indices)
+            print('di\n', detection_indices)
 
             return cost_matrix
 
@@ -120,6 +123,9 @@ class Tracker:
             linear_assignment.matching_cascade(
                 gated_metric, self.metric.matching_threshold, self.max_age,
                 self.tracks, detections, confirmed_tracks)
+        print('matches_a\n', matches_a)                
+        print('unmatched_tracks_a\n', unmatched_tracks_a)                
+        print('unmatched_dets\n', unmatched_detections)                
 
         # Associate remaining tracks together with unconfirmed tracks using IOU.
         # print('Associate remaining tracks together with unconfirmed tracks using IOU.')
@@ -129,10 +135,19 @@ class Tracker:
         unmatched_tracks_a = [
             k for k in unmatched_tracks_a if
             self.tracks[k].time_since_update != 1]
+        # matches_b, unmatched_tracks_b, unmatched_detections, cm_iou = \
+        #     linear_assignment.min_cost_matching(
+        #         iou_matching.iou_cost, self.max_iou_distance, self.tracks,
+        #         detections, iou_track_candidates, unmatched_detections)
+        self.max_eucl_distance = 50.0
         matches_b, unmatched_tracks_b, unmatched_detections, cm_iou = \
             linear_assignment.min_cost_matching(
-                iou_matching.iou_cost, self.max_iou_distance, self.tracks,
-                detections, iou_track_candidates, unmatched_detections)
+                iou_matching.eucl_dist_cost, self.max_eucl_distance, self.tracks,
+                detections, iou_track_candidates, unmatched_detections)                
+        print('itc\n', iou_track_candidates)                
+        print('matches_b\n', matches_b)                
+        print('unmatched_tracks_b\n', unmatched_tracks_b)                
+        print('unmatched_dets2\n', unmatched_detections)   
 
         matches = matches_a + matches_b
         unmatched_tracks = list(set(unmatched_tracks_a + unmatched_tracks_b))

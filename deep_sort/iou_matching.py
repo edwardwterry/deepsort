@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 import numpy as np
 from . import linear_assignment
+from . import nn_matching
 
 
 def iou(bbox, candidates):
@@ -79,4 +80,52 @@ def iou_cost(tracks, detections, track_indices=None,
         bbox = tracks[track_idx].to_tlwh()
         candidates = np.asarray([detections[i].tlwh for i in detection_indices])
         cost_matrix[row, :] = 1. - iou(bbox, candidates)
+    print('iou cm\n', cost_matrix)
+    return cost_matrix
+
+
+def eucl_dist_cost(tracks, detections, track_indices=None,
+                   detection_indices=None):
+    """A Euclidean distance metric.
+
+    Parameters
+    ----------
+    tracks : List[deep_sort.track.Track]
+        A list of tracks.
+    detections : List[deep_sort.detection.Detection]
+        A list of detections.
+    track_indices : Optional[List[int]]
+        A list of indices to tracks that should be matched. Defaults to
+        all `tracks`.
+    detection_indices : Optional[List[int]]
+        A list of indices to detections that should be matched. Defaults
+        to all `detections`.
+
+    Returns
+    -------
+    ndarray
+        Returns a cost matrix of shape
+        len(track_indices), len(detection_indices) where entry (i, j) is
+        `dist(tracks[track_indices[i]], detections[detection_indices[j]])`.
+
+    """
+    print('Calculating IOU cost')
+    if track_indices is None:
+        track_indices = np.arange(len(tracks))
+    if detection_indices is None:
+        detection_indices = np.arange(len(detections))
+
+    cost_matrix = np.zeros((len(track_indices), len(detection_indices)))
+    for row, track_idx in enumerate(track_indices):
+        if tracks[track_idx].time_since_update > 1:
+            cost_matrix[row, :] = linear_assignment.INFTY_COST
+            continue
+
+        bbox = tracks[track_idx].to_tlwh()
+        candidates = np.asarray([detections[i].tlwh for i in detection_indices])
+        # print(bbox[0:2])
+        # print(candidates[:,0:2])
+        # print(np.linalg.norm(bbox[0:2]-candidates[:,0:2],axis=1))
+        cost_matrix[row, :] = np.linalg.norm(bbox[0:2]-candidates[:,0:2],axis=1)
+    print('dist cm\n', cost_matrix)
     return cost_matrix

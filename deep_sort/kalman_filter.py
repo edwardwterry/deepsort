@@ -105,7 +105,7 @@ class KalmanFilter(object):
             state. Unobserved velocities are initialized to 0 mean.
 
         """
-        print('@@@ in predict...')
+        # print('@@@ in predict...')
         std_pos = [
             self._std_weight_position,#,  * mean[3],
             self._std_weight_position,#,  * mean[3],
@@ -121,10 +121,10 @@ class KalmanFilter(object):
         motion_cov = np.diag(np.square(np.r_[std_pos, std_vel]))
 
         mean = np.dot(self._motion_mat, mean)
-        print ('mean\n', mean)
+        # print ('mean\n', mean)
         covariance = np.linalg.multi_dot((
             self._motion_mat, covariance, self._motion_mat.T)) + motion_cov
-        print ('cov\n', covariance)
+        # print ('cov\n', covariance)
 
         return mean, covariance
 
@@ -145,7 +145,7 @@ class KalmanFilter(object):
             estimate.
 
         """
-        print('\n ^^^ in project')
+        # print('\n ^^^ in project')
         std = [
             0.1*self._std_weight_position,#, * mean[3], #0.0001 * 
             0.1*self._std_weight_position,#, * mean[3],
@@ -153,13 +153,13 @@ class KalmanFilter(object):
             0.1*self._std_weight_position#, * mean[3]]
         ]
         innovation_cov = np.diag(np.square(std))
-        print('innovation_cov\n', innovation_cov)
+        # print('innovation_cov\n', innovation_cov)
 
         mean = np.dot(self._update_mat, mean)
-        print('mean\n', mean)
+        # print('mean\n', mean)
         covariance = np.linalg.multi_dot((
             self._update_mat, covariance, self._update_mat.T))
-        print('covariance\n', covariance)
+        # print('covariance\n', covariance)
         return mean, covariance + innovation_cov
 
     def update(self, mean, covariance, measurement):
@@ -182,25 +182,25 @@ class KalmanFilter(object):
             Returns the measurement-corrected state distribution.
 
         """
-        print('om\n', mean)
-        print('oc\n', covariance)
+        # print('om\n', mean)
+        # print('oc\n', covariance)
         projected_mean, projected_cov = self.project(mean, covariance)
-        print('pm\n', projected_mean)
-        print('pc\n', projected_cov)
+        # print('pm\n', projected_mean)
+        # print('pc\n', projected_cov)
         chol_factor, lower = scipy.linalg.cho_factor(
             projected_cov, lower=True, check_finite=False)
         kalman_gain = scipy.linalg.cho_solve(
             (chol_factor, lower), np.dot(covariance, self._update_mat.T).T,
             check_finite=False).T
-        print('kg\n', kalman_gain)
+        # print('kg\n', kalman_gain)
         innovation = measurement - projected_mean
-        print('innov\n', innovation)
+        # print('innov\n', innovation)
 
         new_mean = mean + np.dot(innovation, kalman_gain.T)
         new_covariance = covariance - np.linalg.multi_dot((
             kalman_gain, projected_cov, kalman_gain.T))
-        print ('nm\n', new_mean)
-        print ('nc\n', new_covariance)
+        # print ('nm\n', new_mean)
+        # print ('nc\n', new_covariance)
         return new_mean, new_covariance
 
     def gating_distance(self, mean, covariance, measurements,

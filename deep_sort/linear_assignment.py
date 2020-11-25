@@ -54,13 +54,13 @@ def min_cost_matching(
 
     cost_matrix = distance_metric(
         tracks, detections, track_indices, detection_indices)
-    # cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
+    cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
     indices = linear_assignment(cost_matrix)
     # fig, ax = plt.subplots()
-    print('cm\n', np.asarray(cost_matrix))
-    print('trk indices\n', indices[:,0])
-    print('det indices\n', indices[:,1])
-    print('trk/det indices input\n', track_indices, detection_indices)
+    # print('cm\n', np.asarray(cost_matrix))
+    # print('trk indices\n', indices[:,0])
+    # print('det indices\n', indices[:,1])
+    # print('trk/det indices input\n', track_indices, detection_indices)
 
     # ax.matshow(cost_matrix, cmap='inferno_r')
     # ax.set_title('Feature vector cosine distance \nconfusion matrix')
@@ -150,7 +150,7 @@ def matching_cascade(
     matches = []
     cm = []
     for level in range(cascade_depth):
-        print('Cascade level:', level)
+        # print('Cascade level:', level)
         if len(unmatched_detections) == 0:  # No detections left
             break
 

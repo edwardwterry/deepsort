@@ -3,6 +3,7 @@ from __future__ import division, print_function, absolute_import
 
 import argparse
 import os
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -164,7 +165,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
     results = []
 
     def frame_callback(vis, frame_idx):
-        print("==============\n\nProcessing frame %05d" % frame_idx)
+        print("Processing frame %05d" % frame_idx)
 
         # Load image and generate detections.
         detections = create_detections(
@@ -192,6 +193,7 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
             vis.draw_detections(detections)
 
         # Save image to file
+            Path(vis_dir).mkdir(parents=True, exist_ok=True)
             cv2.imwrite(os.path.join(vis_dir, f'{frame_idx:05d}'+'.jpg'), vis.viewer.image)
 
         # Store results.
@@ -203,8 +205,9 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
                 frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
 
     # Run tracker.
+    print('display', type(display), display)
     if display:
-        visualizer = visualization.Visualization(seq_info, update_ms=4000)
+        visualizer = visualization.Visualization(seq_info, update_ms=500)
     else:
         visualizer = visualization.NoVisualization(seq_info)
     visualizer.run(frame_callback)
@@ -250,7 +253,7 @@ def parse_args():
         "detection overlap.", default=1.0, type=float)
     parser.add_argument(
         "--max_cosine_distance", help="Gating threshold for cosine distance "
-        "metric (object appearance).", type=float, default=0.4) # was 0.2
+        "metric (object appearance).", type=float, default=0.1) # was 0.2
     parser.add_argument(
         "--nn_budget", help="Maximum size of the appearance descriptors "
         "gallery. If None, no budget is enforced.", type=int, default=None)
