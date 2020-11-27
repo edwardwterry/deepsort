@@ -148,6 +148,7 @@ class Track:
     def mark_missed(self):
         """Mark this track as missed (no association at the current time step).
         """
+        print('marking missed id, state, too old?\n', self.track_id, self.state, self.time_since_update > self._max_age)
         if self.state == TrackState.Tentative:
             self.state = TrackState.Deleted
         elif self.time_since_update > self._max_age:

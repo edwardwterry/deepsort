@@ -51,17 +51,17 @@ def min_cost_matching(
 
     if len(detection_indices) == 0 or len(track_indices) == 0:
         return [], track_indices, detection_indices, []  # Nothing to match.
-
     cost_matrix = distance_metric(
         tracks, detections, track_indices, detection_indices)
-    cost_matrix[cost_matrix > max_distance] = max_distance + 1e-5
+    cost_matrix[cost_matrix > max_distance] = max_distance + 1e-3 # was 1e-5
     indices = linear_assignment(cost_matrix)
-    # fig, ax = plt.subplots()
-    # print('cm\n', np.asarray(cost_matrix))
-    # print('trk indices\n', indices[:,0])
-    # print('det indices\n', indices[:,1])
+    print('!!!in mcm')
     # print('trk/det indices input\n', track_indices, detection_indices)
+    print('cm\n', np.asarray(cost_matrix))
+    print('trk indices\n', indices[:,0])
+    print('det indices\n', indices[:,1])
 
+    # fig, ax = plt.subplots()
     # ax.matshow(cost_matrix, cmap='inferno_r')
     # ax.set_title('Feature vector cosine distance \nconfusion matrix')
     # ax.set_xlabel('Existing tracks')
@@ -104,7 +104,7 @@ def min_cost_matching(
 
 def matching_cascade(
         distance_metric, max_distance, cascade_depth, tracks, detections,
-        track_indices=None, detection_indices=None):
+        track_indices=None, detection_indices=None, master_tid=None):
     """Run matching cascade.
 
     Parameters
@@ -141,6 +141,8 @@ def matching_cascade(
         * A list of unmatched detection indices.
 
     """
+    print('MASTER ti\n', master_tid)
+    print('ti before levels\n', track_indices)
     if track_indices is None:
         track_indices = list(range(len(tracks)))
     if detection_indices is None:
@@ -150,7 +152,7 @@ def matching_cascade(
     matches = []
     cm = []
     for level in range(cascade_depth):
-        # print('Cascade level:', level)
+        print('Cascade level:', level)
         if len(unmatched_detections) == 0:  # No detections left
             break
 
@@ -158,6 +160,11 @@ def matching_cascade(
             k for k in track_indices
             if tracks[k].time_since_update == 1 + level
         ]
+        ti_at_lev = [
+            t.track_id for t in tracks
+            if t.time_since_update == 1 + level
+        ]
+        print('ti at level (abs)\n', ti_at_lev) # This is true!
         if len(track_indices_l) == 0:  # Nothing to match at this level
             continue
 
@@ -165,6 +172,8 @@ def matching_cascade(
             min_cost_matching(
                 distance_metric, max_distance, tracks, detections,
                 track_indices_l, unmatched_detections)
+        print('match at lev (abs)\n', [(master_tid[m[0]], m[1]) for m in matches_l])
+        print('unm det\n', unmatched_detections)
         matches += matches_l
     unmatched_tracks = list(set(track_indices) - set(k for k, _ in matches))
     return matches, unmatched_tracks, unmatched_detections, cm
@@ -209,15 +218,15 @@ def gate_cost_matrix(
     """
     gating_dim = 2 if only_position else 4
     gating_threshold = kalman_filter.chi2inv95[gating_dim]# * 5.0
-    print('gating thresh\n', gating_threshold)
+    # print('gating thresh\n', gating_threshold)
     measurements = np.asarray(
         [detections[i].to_xyah() for i in detection_indices])
-    print('gcm measurements:\n', measurements)
+    # print('gcm measurements:\n', measurements)
     for row, track_idx in enumerate(track_indices):
         track = tracks[track_idx]
-        print('in gcm, tid', track_idx)
+        # print('in gcm, tid', track_idx)
         gating_distance = kf.gating_distance(
             track.mean, track.covariance, measurements, only_position)
-        print('gating dist\n', gating_distance)
+        # print('gating dist\n', gating_distance)
         cost_matrix[row, gating_distance > gating_threshold] = gated_cost
     return cost_matrix

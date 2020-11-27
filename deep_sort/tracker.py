@@ -68,9 +68,14 @@ class Tracker:
 
         """
         # Run matching cascade.
+        print('State of tracks before update')
+        for t in self.tracks:
+            print('tid', t.track_id, 'state', t.state, 'since', t.time_since_update)
         matches, unmatched_tracks, unmatched_detections, self.cm_app, self.cm_iou = \
             self._match(detections)
-
+        print('matches\n', matches)
+        print('unmatched_tracks\n', unmatched_tracks)
+        print('unmatched_detections\n', unmatched_detections)
         # Update track set.
         for track_idx, detection_idx in matches:
             # print('updating KF for tid did', track_idx, detection_idx)
@@ -102,12 +107,12 @@ class Tracker:
             targets = np.array([tracks[i].track_id for i in track_indices])
             cost_matrix = self.metric.distance(features, targets)
             print('cm#1\n', cost_matrix)
+            # print('track ids active at last step\n', targets)
+            # print('incoming det ids\n', detection_indices)
             cost_matrix = linear_assignment.gate_cost_matrix(
                 self.kf, cost_matrix, tracks, dets, track_indices,
                 detection_indices) # taking away gating for time being HACK
             print('cm#2\n', cost_matrix)
-            print('ti\n', track_indices)
-            print('di\n', detection_indices)
 
             return cost_matrix
 
@@ -116,14 +121,19 @@ class Tracker:
             i for i, t in enumerate(self.tracks) if t.is_confirmed()]
         unconfirmed_tracks = [
             i for i, t in enumerate(self.tracks) if not t.is_confirmed()]
-
-        # Associate confirmed tracks using appearance features.
+        print('conf\n', [
+            t.track_id for t in self.tracks if t.is_confirmed()])
+        print('unconf\n', [
+            t.track_id for t in self.tracks if not t.is_confirmed()])        
+            # Associate confirmed tracks using appearance features.
         # print('Associate confirmed tracks using appearance features.')
+        master_tid = [t.track_id for t in self.tracks if t.is_confirmed()]
         matches_a, unmatched_tracks_a, unmatched_detections, cm_app = \
             linear_assignment.matching_cascade(
                 gated_metric, self.metric.matching_threshold, self.max_age,
-                self.tracks, detections, confirmed_tracks)
-        print('matches_a\n', matches_a)                
+                self.tracks, detections, confirmed_tracks, 
+                master_tid=master_tid)
+        print('matches_a\n', [(master_tid[m[0]], m[1]) for m in matches_a])                
         print('unmatched_tracks_a\n', unmatched_tracks_a)                
         print('unmatched_dets\n', unmatched_detections)                
 
@@ -139,12 +149,12 @@ class Tracker:
         #     linear_assignment.min_cost_matching(
         #         iou_matching.iou_cost, self.max_iou_distance, self.tracks,
         #         detections, iou_track_candidates, unmatched_detections)
-        self.max_eucl_distance = 50.0
+        self.max_eucl_distance = 45.0
         matches_b, unmatched_tracks_b, unmatched_detections, cm_iou = \
             linear_assignment.min_cost_matching(
                 iou_matching.eucl_dist_cost, self.max_eucl_distance, self.tracks,
                 detections, iou_track_candidates, unmatched_detections)                
-        print('itc\n', iou_track_candidates)                
+        print('eucl dist candidates\n', iou_track_candidates)                
         print('matches_b\n', matches_b)                
         print('unmatched_tracks_b\n', unmatched_tracks_b)                
         print('unmatched_dets2\n', unmatched_detections)   
@@ -158,4 +168,5 @@ class Tracker:
         self.tracks.append(Track(
             mean, covariance, self._next_id, self.n_init, self.max_age,
             detection.feature))
+        print('init track at id:', self._next_id)
         self._next_id += 1
